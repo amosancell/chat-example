@@ -44,6 +44,7 @@
         </style>
     </head>
     <body>
+        <h3 id="username"></h3>
         <ul id="messages"></ul>
         <form action="">
             <input id="m" autocomplete="off"></form><br>
@@ -54,17 +55,52 @@
         <script>
             $(function() {
                 var socket = io();
+                var name; // the name that the person writing the message uses
                 $('form').submit(function(e) {
                     e.preventDefault(); // prevents the page from reloading
-                    socket.emit('client chat message', $('#m').val());
+                    socket.emit('client chat message', {'message':$('#m').val(),'senderName':name});
+                    socket.emit('stopped typing',name);
                     $('#m').val('');
                     return false;
+                });
+                socket.on('name request', function(usernames) {
+                    name = prompt("Please enter your name","");
+                    while(Object.values(usernames).includes(name)) {
+                        name = prompt(name + " is taken. Please choose another name","");
+                    }
+                    socket.emit('name response',name);
+                    $('#username').text(name);
                 });
                 socket.on('backend chat message', function(msg) {
                     $('#messages').append($('<li>').text(msg));
                 });
                 socket.on('backend disconnect', function(message) {
                     $('#messages').append($('<li>').text(message));
+                });
+                $('#m').on('input', function(e) {
+                    if($('#m').val() != ''/* && $('#messages li').last().text() != name + ' is typing'*/) {
+                        socket.emit('currently typing',name);
+                    }
+                    //socket.emit('currently typing');
+                    if($('#m').val() == ''/* && $('#messages li').last().text() == name + ' is typing'*/) {
+                        //$('#messages li:last-child').remove();
+                        socket.emit('stopped typing',name);
+                    }
+                });
+                socket.on('typing response', function(otherName) {
+                    if($('#messages li').last().text() != otherName + ' is typing') {
+                        $('#messages').append($('<li>').text(otherName + ' is typing'));
+                    }
+                });
+                socket.on('stopped typing response', function(otherName) {
+                    //$('#messages li:last-child').remove();
+                    console.log(otherName);
+                    $($('#messages li').get().reverse()).each(function() {
+                        if($(this).text() == otherName + ' is typing') {
+                            $(this).remove();
+                            return false;
+                        }
+                    });
                 });
             });
         </script>

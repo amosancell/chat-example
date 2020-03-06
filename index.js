@@ -3,6 +3,7 @@ var bodyParser = require('body-parser');
 var app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded());
+app.set('view engine','ejs');
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 
@@ -10,33 +11,37 @@ var usernames = {};
 var name;
 
 app.get('/', function(req, res) {
-    res.sendFile(__dirname + '/index.html');
-    /*if(name) {
-        res.sendFile(__dirname + '/index.html');
+    if(name) {
+        //res.sendFile(__dirname + '/index.html');
+        res.render('index.ejs',{name:name});
+        name = null;
     }
     else {
         res.redirect('setName');
-    }*/
+    }
 });
 
 app.get('/setName', function(req,res) {
-    res.sendFile(__dirname + '/setName.html');
+    //res.sendFile(__dirname + '/setName.html');
+    res.render('setName.ejs');
 });
 
 app.post('/setNamePost', function(req, res) {
-    name = req.body.username;
-    usernames.push(name);
+    name = req.body.userName;
     res.redirect('/');
 });
 
 io.on('connection', function(socket) {
     //console.log('a user has connected');
 
-    socket.emit('name request', usernames);
+    /*socket.emit('name request', usernames);
     socket.on('name response', function(name) {
         usernames[socket.id] = name;
         //console.log('newname\n',usernames);
-    });
+    });*/
+    usernames[socket.id] = socket.handshake.query.name;
+    socket.emit('new member',usernames[socket.id] + ' has joined the chat!');
+    socket.emit('update num online',Object.keys(usernames).length);
 
     socket.on('client chat message', function(dict) {
         let msg = dict['message'];
@@ -70,7 +75,7 @@ http.listen(3000, function() {
 
 
 ///// TODO TODO TODO TODO TODO
-// show who is online
 // make certain names not allowed
-// make name a requirement (can't press 'cancel')
-// send message to everyone when someone enters the chatroom
+// make autofocus allowed
+// make look good
+// clean up code
